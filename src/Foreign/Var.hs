@@ -43,14 +43,16 @@ import Foreign.Storable
 --------------------------------------------------------------------
 
 data Var a = Var
-  (IO a)       -- get
+  (IO a)              -- get
   ((a -> a) -> IO ()) -- update
   ((a -> a) -> IO ()) -- strict update
-  (a -> IO ()) -- set
+  (a -> IO ())        -- set
   deriving Typeable
 
 -- | Build a 'Var' form a getter and a setter.
-newVar :: (IO a) -> (a -> IO ()) -> Var a
+newVar :: (IO a)       -- ^ getter
+       -> (a -> IO ()) -- ^ setter
+       -> Var a
 newVar g s = Var g u u' s where
   u f = do
     a <- g
