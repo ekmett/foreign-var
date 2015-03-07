@@ -88,6 +88,9 @@ instance HasGetter (TVar a) a where
 instance HasGetter (IO a) a where
   get = liftIO
 
+instance HasGetter (STM a) a where
+  get = liftIO . atomically
+
 instance Storable a => HasGetter (Ptr a) a where
   get = liftIO . peek
 
