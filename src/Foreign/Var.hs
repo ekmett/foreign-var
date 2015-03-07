@@ -122,7 +122,17 @@ class HasUpdate t a | t -> a where
     r $=! f a
 
 instance HasUpdate (Var a) a
+
 instance Storable a => HasUpdate (Ptr a) a
+
 instance HasUpdate (IORef a) a where
   r $~ f  = liftIO $ atomicModifyIORef r $ \a -> (f a,())
   r $~! f = liftIO $ atomicModifyIORef' r $ \a -> (f a,())
+
+instance HasUpdate (TVar a) a where
+  r $~ f = liftIO $ atomically $ do
+    a <- readTVar r
+    writeTVar r (f a)
+  r $~! f = liftIO $ atomically $ do
+    a <- readTVar r
+    writeTVar r $! f a
