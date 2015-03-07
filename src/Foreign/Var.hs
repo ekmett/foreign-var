@@ -53,7 +53,7 @@ import Foreign.Storable
 -- thrown exception:
 --
 -- @
--- do x <- 'getVar' v; setVar v y; 'setVar' v x
+-- do x <- 'getVar' v; 'setVar' v y; 'setVar' v x
 -- @
 --
 -- should restore the previous state.
@@ -64,11 +64,10 @@ import Foreign.Storable
 -- 'setVar' v a >> 'getVar' v
 -- @
 --
--- should return @a@, regardless of @a@, but in practice some 'Var's only
--- permit a very limited range of value assignments, which should be clearly
--- documented.
+-- should return @a@, regardless of @a@. In practice some 'Var's only
+-- permit a very limited range of value assignments, and do not report failure.
 --
--- The result of 'updateVar' should be compatible with the result of getting
+-- The result of 'updateVar' should also be compatible with the result of getting
 -- and setting separately, however, it may be more efficient or have better
 -- atomicity properties in a concurrent setting.
 data Var a = Var
