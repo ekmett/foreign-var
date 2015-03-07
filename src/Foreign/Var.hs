@@ -109,7 +109,7 @@ mapVar :: (b -> a) -> (a -> b) -> Var a -> Var b
 mapVar ba ab (Var ga sa) = Var (ab <$> ga) (sa . ba)
 {-# INLINE mapVar #-}
 
-class HasUpdate t a | t -> a where
+class HasSetter t a => HasUpdate t a | t -> a where
   ($~) :: MonadIO m => t -> (a -> a) -> m ()
   default ($~) :: (MonadIO m, HasGetter t a, HasSetter t a) => t -> (a -> a) -> m ()
   r $~ f = liftIO $ do
