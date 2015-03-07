@@ -16,7 +16,7 @@
 module Foreign.Var
   (
   -- * Variables
-    Var(Var)
+    Var(..)
   , newVar
   , mapVar
   , SettableVar(SettableVar)
@@ -42,12 +42,41 @@ import Foreign.Storable
 -- * Var
 --------------------------------------------------------------------
 
+-- | This data type represents a piece of mutable, imperative state
+-- with possible side-effects. These tend to encapsulate all sorts
+-- tricky behavior in external libraries, and may well throw
+-- exceptions.
+--
+-- Inhabitants __should__ satsify the following properties.
+--
+-- In the absence of concurrent mutation from other threads or a
+-- thrown exception:
+--
+-- @
+-- do x <- 'getVar' v; setVar v y; 'setVar' v x
+-- @
+--
+-- should restore the previous state.
+--
+-- Ideally, in the absence of thrown exceptions:
+--
+-- @
+-- 'setVar' v a >> 'getVar' v
+-- @
+--
+-- should return @a@, regardless of @a@, but in practice some 'Var's only
+-- permit a very limited range of value assignments, which should be clearly
+-- documented.
+--
+-- The result of 'updateVar' should be compatible with the result of getting
+-- and setting separately, however, it may be more efficient or have better
+-- atomicity properties in a concurrent setting.
 data Var a = Var
-  (IO a)              -- get
-  ((a -> a) -> IO ()) -- update
-  ((a -> a) -> IO ()) -- strict update
-  (a -> IO ())        -- set
-  deriving Typeable
+  { getVar :: IO a                  -- ^ Used by 'get'
+  , updateVar  :: (a -> a) -> IO () -- ^ Used by @('$~')@
+  , updateVar' :: (a -> a) -> IO () -- ^ Used by @('$~!')@
+  , setVar :: a -> IO ()            -- ^ Used by @('$=')@
+  } deriving Typeable
 
 -- | Build a 'Var' form a getter and a setter.
 newVar :: (IO a)       -- ^ getter
