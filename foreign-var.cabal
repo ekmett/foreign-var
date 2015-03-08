@@ -1,6 +1,6 @@
 name:          foreign-var
 category:      FFI, Mutable State
-version:       0
+version:       0.0.0.1
 license:       BSD3
 cabal-version: >= 1.10
 license-file:  LICENSE
