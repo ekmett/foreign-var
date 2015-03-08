@@ -17,8 +17,7 @@
 module Foreign.Var
   (
   -- * Variables
-    Var(..)
-  , newVar
+    Var(Var)
   , mapVar
   , SettableVar(SettableVar)
   , GettableVar
@@ -35,9 +34,6 @@ import Data.IORef
 import Data.Typeable
 import Foreign.Ptr
 import Foreign.Storable
---import Data.Void
---import Data.Functor.Contravariant
---import Data.Functor.Contravariant.Divisible
 
 --------------------------------------------------------------------
 -- * Var
@@ -54,7 +50,7 @@ import Foreign.Storable
 -- thrown exception:
 --
 -- @
--- do x <- 'getVar' v; 'setVar' v y; 'setVar' v x
+-- do x <- 'get' v; v '$=' y; v '$=' x
 -- @
 --
 -- should restore the previous state.
@@ -62,58 +58,20 @@ import Foreign.Storable
 -- Ideally, in the absence of thrown exceptions:
 --
 -- @
--- 'setVar' v a >> 'getVar' v
+-- v '$=' a >> 'get' v
 -- @
 --
 -- should return @a@, regardless of @a@. In practice some 'Var's only
 -- permit a very limited range of value assignments, and do not report failure.
---
--- The result of 'updateVar' should also be compatible with the result of getting
--- and setting separately, however, it may be more efficient or have better
--- atomicity properties in a concurrent setting.
-data Var a = Var
-  { getVar :: IO a                  -- ^ Used by 'get'
-  , updateVar  :: (a -> a) -> IO () -- ^ Used by @('$~')@
-  , updateVar' :: (a -> a) -> IO () -- ^ Used by @('$~!')@
-  , setVar :: a -> IO ()            -- ^ Used by @('$=')@
-  } deriving Typeable
-
--- | Build a 'Var' form a getter and a setter.
-newVar :: (IO a)       -- ^ getter
-       -> (a -> IO ()) -- ^ setter
-       -> Var a
-newVar g s = Var g u u' s where
-  u f = do
-    a <- g
-    s (f a)
-  u' f = do
-    a <- g
-    s $! f a
+data Var a = Var (IO a) (a -> IO ()) deriving Typeable
 
 -- | Change the type of a 'Var'
 mapVar :: (b -> a) -> (a -> b) -> Var a -> Var b
-mapVar ba ab (Var ga ua ua' sa) = Var (ab <$> ga) (\bb -> ua (ba . bb . ab)) (\bb -> ua' (ba . bb . ab)) (sa . ba)
+mapVar ba ab (Var ga sa) = Var (ab <$> ga) (sa . ba)
 {-# INLINE mapVar #-}
 
 newtype SettableVar a = SettableVar (a -> IO ())
   deriving Typeable
-
-{-
-instance Contravariant SettableVar where
-  contramap f (SettableVar k) = SettableVar (k . f)
-  {-# INLINE contramap #-}
-
-instance Divisible SettableVar where
-  divide k (SettableVar l) (SettableVar r) = SettableVar $ \ a -> case k a of
-    (b, c) -> l b >> r c
-  conquer = SettableVar $ \_ -> return ()
-
-instance Decidable SettableVar where
-  lose k = SettableVar (absurd . k)
-  choose k (SettableVar l) (SettableVar r) = SettableVar $ \ a -> case k a of
-    Left b -> l b
-    Right c -> r c
--}
 
 type GettableVar = IO
 
@@ -135,7 +93,7 @@ instance HasSetter (SettableVar a) a where
   {-# INLINE ($=) #-}
 
 instance HasSetter (Var a) a where
-  Var _ _ _ s $= a = liftIO $ s a
+  Var _ s $= a = liftIO $ s a
 
 instance Storable a => HasSetter (Ptr a) a where
   p $= a = liftIO $ poke p a
@@ -166,9 +124,7 @@ class HasSetter t a => HasUpdate t a b | t -> a b where
     a <- get r
     r $=! f a
 
-instance HasUpdate (Var a) a a where
-  Var _ u _ _ $~  f = liftIO $ u f
-  Var _ _ v _ $~! f = liftIO $ v f
+instance HasUpdate (Var a) a a
 
 instance Storable a => HasUpdate (Ptr a) a a
 
@@ -198,7 +154,7 @@ class HasGetter t a | t -> a where
   get :: MonadIO m => t -> m a
 
 instance HasGetter (Var a) a where
-  get (Var g _ _ _) = liftIO g
+  get (Var g _) = liftIO g
 
 instance HasGetter (TVar a) a where
   get = liftIO . atomically . readTVar

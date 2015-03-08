@@ -1,3 +1,7 @@
+0.1
+---
+* Simplified `Var`
+
 0.0.0.1
 -------
 * Enable compilation on GHC < 7.6
