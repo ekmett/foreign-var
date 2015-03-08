@@ -173,7 +173,13 @@ instance Storable a => HasUpdate (Ptr a) a a
 
 instance HasUpdate (IORef a) a a where
   r $~ f  = liftIO $ atomicModifyIORef r $ \a -> (f a,())
+#if __GLASGOW_HASKELL__ >= 706
   r $~! f = liftIO $ atomicModifyIORef' r $ \a -> (f a,())
+#else
+  r $~! f = liftIO $ do
+    s <- atomicModifyIORef r $ \a -> let s = f a in (s, s)
+    s `seq` return ()
+#endif
 
 instance HasUpdate (TVar a) a a where
   r $~ f = liftIO $ atomically $ do
